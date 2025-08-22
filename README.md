@@ -1,4 +1,4 @@
-# Code for HDPharm SubStack Blog
+# Code for [HDPharm SubStack Blog](https://hdpharm.substack.com/)
 
 ## Overview
 
