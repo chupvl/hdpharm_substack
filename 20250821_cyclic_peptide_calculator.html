@@ -339,6 +339,7 @@
             margin-top: 24px;
         }
     </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.26.0/plotly.min.js"></script>
 </head>
 <body>
     <div class="container">
@@ -436,6 +437,19 @@
                     <strong>Peptide Status:</strong> *FDA approved, †Merck pipeline (Phase 3). Note: MK-0616 is Merck's leading macrocyclic peptide in development.
                 </p>
             </div>
+        </div>
+
+        <!-- Interactive Contour Plot -->
+        <div class="footer" style="margin-top: 32px;">
+            <h3 class="footer-title">Parameter Space Analysis: Interactive Contour Plot</h3>
+            <p class="footer-text" style="margin-bottom: 16px;">
+                Interactive contour plot showing unique cyclic peptide counts across different peptide lengths (L) and amino acid diversities (U). 
+                Contour lines represent equal peptide counts. Hover for exact values, zoom and pan to explore specific regions.
+            </p>
+            <p class="footer-text" style="margin-bottom: 16px;">
+                <strong>Parameters:</strong> Peptide Length (L): 3-20 amino acids, Unique Amino Acids (U): 3-20 types
+            </p>
+            <div id="plot2d" style="width: 100%; height: 600px; margin-top: 16px;"></div>
         </div>
     </div>
 
@@ -560,12 +574,182 @@
             updateResults();
         }
 
+        // Generate interactive contour plot
+        function generate2DPlot() {
+            const URange = [];
+            const LRange = [];
+            const zData = [];
+            
+            // Generate U values (3 to 20)
+            for (let U = 3; U <= 20; U++) {
+                URange.push(U);
+            }
+            
+            // Generate L values (3 to 20)
+            for (let L = 3; L <= 20; L++) {
+                LRange.push(L);
+            }
+            
+            // Calculate peptide counts for all L,U combinations
+            for (let i = 0; i < LRange.length; i++) {
+                zData[i] = [];
+                for (let j = 0; j < URange.length; j++) {
+                    const L = LRange[i];
+                    const U = URange[j];
+                    const peptideCount = calculateCyclicPeptides(L, U);
+                    zData[i][j] = peptideCount;
+                }
+            }
+            
+            // Create logarithmic contour levels
+            const contourLevels = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 
+                                 2000, 5000, 10000, 20000, 50000, 100000, 
+                                 200000, 500000, 1000000, 2000000, 5000000, 
+                                 10000000, 50000000, 100000000, 500000000, 1000000000];
+            
+            const data = [{
+                type: 'contour',
+                x: URange,
+                y: LRange,
+                z: zData,
+                colorscale: [
+                    [0, '#0f172a'],     // Dark navy
+                    [0.1, '#1e3a8a'],   // Dark blue
+                    [0.2, '#3b82f6'],   // Blue
+                    [0.4, '#06b6d4'],   // Cyan
+                    [0.6, '#10b981'],   // Green
+                    [0.8, '#f59e0b'],   // Orange
+                    [1, '#dc2626']      // Red
+                ],
+                contours: {
+                    start: 1,
+                    end: 1000000000,
+                    size: 0,  // Auto-calculate
+                    showlabels: true,
+                    labelfont: {
+                        color: 'white',
+                        size: 10,
+                        family: 'Arial'
+                    },
+                    labelformat: '.0s'  // Scientific notation (1K, 1M, etc.)
+                },
+                line: {
+                    color: 'white',
+                    width: 1,
+                    smoothing: 1.3
+                },
+                colorbar: {
+                    title: {
+                        text: 'Unique<br>Peptides<br>(log scale)',
+                        font: { color: '#374151', size: 11 }
+                    },
+                    tickfont: { color: '#6b7280', size: 9 },
+                    tickmode: 'array',
+                    tickvals: [1, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000],
+                    ticktext: ['1', '10', '100', '1K', '10K', '100K', '1M', '10M', '100M'],
+                    type: 'log',
+                    dtick: 1,  // One tick per order of magnitude
+                    len: 0.8,  // Make colorbar shorter
+                    thickness: 15,  // Make it thinner
+                    x: 1.02
+                },
+                hovertemplate: 
+                    '<b>Peptide Length (L)</b>: %{y}<br>' +
+                    '<b>Unique Amino Acids (U)</b>: %{x}<br>' +
+                    '<b>Unique Peptides</b>: %{z:,.0f}<br>' +
+                    '<extra></extra>'
+            }];
+            
+            const layout = {
+                title: {
+                    text: 'Cyclic Peptide Diversity: Parameter Space Contours',
+                    font: { size: 18, color: '#1f2937', family: 'Arial, sans-serif' },
+                    x: 0.5
+                },
+                xaxis: {
+                    title: {
+                        text: 'Number of Unique Amino Acids (U)',
+                        font: { color: '#374151', size: 14 }
+                    },
+                    tickfont: { color: '#374151', size: 12 },
+                    range: [2.5, 20.5],
+                    dtick: 2,
+                    gridcolor: '#e5e7eb',
+                    gridwidth: 1
+                },
+                yaxis: {
+                    title: {
+                        text: 'Peptide Length (L)',
+                        font: { color: '#374151', size: 14 }
+                    },
+                    tickfont: { color: '#374151', size: 12 },
+                    range: [2.5, 20.5],
+                    dtick: 2,
+                    gridcolor: '#e5e7eb',
+                    gridwidth: 1
+                },
+                paper_bgcolor: '#ffffff',
+                plot_bgcolor: '#f9fafb',
+                margin: { l: 80, r: 120, t: 80, b: 80 },
+                font: { family: 'Arial, sans-serif' },
+                annotations: [
+                    {
+                        text: 'Each contour line represents<br>equal numbers of unique peptides',
+                        x: 0.02,
+                        y: 0.98,
+                        xref: 'paper',
+                        yref: 'paper',
+                        xanchor: 'left',
+                        yanchor: 'top',
+                        showarrow: false,
+                        font: {
+                            size: 11,
+                            color: '#6b7280'
+                        },
+                        bgcolor: 'rgba(255, 255, 255, 0.8)',
+                        bordercolor: '#d1d5db',
+                        borderwidth: 1
+                    }
+                ]
+            };
+            
+            const config = {
+                displayModeBar: true,
+                displaylogo: false,
+                modeBarButtonsToRemove: ['lasso2d', 'autoScale2d', 'select2d'],
+                modeBarButtonsToAdd: [
+                    {
+                        name: 'Reset View',
+                        icon: {
+                            width: 857.1,
+                            height: 1000,
+                            path: 'm214 518h143v196q0 8-5 13t-13 5h-107q-8 0-13-5t-5-13v-196z m357 0h143v196q0 8-5 13t-13 5h-107q-8 0-13-5t-5-13v-196z m-357-232h143v196q0 8-5 13t-13 5h-107q-8 0-13-5t-5-13v-196z m357 0h143v196q0 8-5 13t-13 5h-107q-8 0-13-5t-5-13v-196z'
+                        },
+                        click: function() {
+                            Plotly.relayout('plot2d', {
+                                'xaxis.range': [2.5, 20.5],
+                                'yaxis.range': [2.5, 20.5]
+                            });
+                        }
+                    }
+                ],
+                responsive: true
+            };
+            
+            Plotly.newPlot('plot2d', data, layout, config);
+        }
+
         // Add event listeners
         document.getElementById('length').addEventListener('input', updateResults);
         document.getElementById('uniqueAA').addEventListener('input', updateResults);
 
         // Initial calculation
         updateResults();
+        
+        // Generate contour plot when page loads
+        window.addEventListener('load', function() {
+            generate2DPlot();
+        });
     </script>
 </body>
 </html>
